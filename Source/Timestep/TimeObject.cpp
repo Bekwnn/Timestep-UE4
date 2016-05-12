@@ -3,70 +3,54 @@
 #include "Timestep.h"
 #include "TimeObject.h"
 
-// TrackerDataImpl BEGINS
-template<typename T, typename RefObj>
-TrackerDataImpl<T, RefObj>::TrackerDataImpl(TWeakPtr<RefObj> checkDeleteObject, std::function<T()> getter, std::function<void(T)> setter, int snapshotsPerSecond, bool bInterpolate) :
-	getValueFunc(getter),
-	setValueFunc(setter)
-{
-	objectReference = new TWeakPtr<RefObj>();
-	timeHistory = TimeHistory<T>(getter(), snapshotsPerSecond, bInterpolate);
-}
-
-template<typename T, typename RefObj>
-void TrackerDataImpl<T, RefObj>::ForwardUpdate()
-{
-	TimeHistory::ForwardUpdate(timeHistory, time, getValueFunc());
-}
-
-template<typename T, typename RefObj>
-void TrackerDataImpl<T, RefObj>::RewindUpdate()
-{
-	setValueFunc(TimeHistory::RewindUpdate(timeHistory, time));
-}
-
-template<typename T, typename RefObj>
-bool TrackerDataImpl<T, RefObj>::RefObjectIsValid()
-{
-	return objectReference.IsValid();
-}
-
 // TimeObject BEGINS
 float UTimeObject::globalTimeDilation = 1.0f;
 
 UTimeObject::UTimeObject()
 {
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 UTimeObject::~UTimeObject()
 {
 }
 
-template<typename T, typename RefObj>
-void UTimeObject::AddTrackedData(TWeakPtr<RefObj> deleteCheckRef, std::function<T()> getter, std::function<void(T)> setter, int snapshotsPerSecond, bool bInterpolate)
+void UTimeObject::TrackActorTransform()
 {
-	dataHistories.Add(new TrackerDataImpl<T, RefObj>(deleteCheckRef, getter, setter, snapshotsPerSecond, bInterpolate) );
+	AActor* owner = GetOwner();
+	AddTrackedData<FVector>(
+		owner,
+		localTime,
+		[owner]()               { return owner->GetActorLocation(); },
+		[owner](FVector newVal) { owner->SetActorLocation(newVal); },
+		1,
+		true
+		);
+	AddTrackedData<FQuat>(
+		owner,
+		localTime,
+		[owner]()             { return owner->GetActorQuat(); },
+		[owner](FQuat newVal) { owner->SetActorRotation(newVal); },
+		1,
+		true
+		);
 }
 
 void UTimeObject::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction * ThisTickFunction)
 {
+	float timeScale = (bIsLocalTimeDilation) ? localTimeDilation : globalTimeDilation;
+
+	localTime = std::fmax(0.f, localTime + DeltaTime * timeScale);
+
 	for (TrackerData* trackerData : dataHistories)
 	{
-		if (!trackerData->RefObjectIsValid())
-		{
-			//remove trackerData from dataHistories and continue the loop
-			continue;
-		}
-
-		float timeScale = (bIsLocalTimeDilation) ? timeDilation : globalTimeDilation;
-
 		if (timeScale > 0.f)
 		{
-			trackerData->ForwardUpdate();
+			trackerData->ForwardUpdate(localTime);
 		}
 		else if (timeScale < 0.f)
 		{
-			trackerData->RewindUpdate();
+			trackerData->RewindUpdate(localTime);
 		}
 	}
 }
