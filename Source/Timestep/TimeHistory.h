@@ -62,7 +62,6 @@ TimeHistory<T>::~TimeHistory()
 template<typename T>
 void TimeHistory<T>::ForwardUpdate(float time, T value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Current Time is %f"), time);
 	if (time - history[history.Num() - 1].time > snapshotInterval)
 	{
 		history.Emplace(TimeInfo<T>(value, time));
@@ -93,7 +92,7 @@ TimeHistoryInterp<T>::TimeHistoryInterp(T value, float time, int snapshotsPerSec
 }
 
 template<typename T>
-TimeInfo<T> TimeHistoryInterp<T>::RewindTo(float time)
+inline TimeInfo<T> TimeHistoryInterp<T>::RewindTo(float time)
 {
 	float clampedTime = (time >= 0.f) ? time : 0.f;
 
@@ -104,8 +103,27 @@ TimeInfo<T> TimeHistoryInterp<T>::RewindTo(float time)
 
 	float lerpval = (clampedTime - history[history.Num() - 2].time) / (history[history.Num() - 1].time - history[history.Num() - 2].time);
 	lerpval = std::fmin(1.0f, std::fmax(0.0f, lerpval));
-	UE_LOG(LogTemp, Warning, TEXT("lerpval: %f"), lerpval);
+
 	T interpolatedData = history[history.Num() - 2].data * (1.f - lerpval) + history[history.Num() - 1].data * lerpval;
 
 	return TimeInfo<T>(interpolatedData, time);
+}
+
+// Quaternions may lerp the wrong direction (ie 350 degrees instead of 10) this is to check and always lerp shortest path
+template<>
+inline TimeInfo<FQuat> TimeHistoryInterp<FQuat>::RewindTo(float time)
+{
+	float clampedTime = (time >= 0.f) ? time : 0.f;
+
+	while (history.Num() > 2 && history[history.Num() - 2].time >= clampedTime)
+	{
+		history.Pop();
+	}
+
+	float lerpval = (clampedTime - history[history.Num() - 2].time) / (history[history.Num() - 1].time - history[history.Num() - 2].time);
+	lerpval = std::fmin(1.0f, std::fmax(0.0f, lerpval));
+
+	FQuat interpolatedData = FQuat::Slerp(history[history.Num() - 2].data, history[history.Num() - 1].data, lerpval);
+
+	return TimeInfo<FQuat>(interpolatedData, time);
 }

@@ -58,13 +58,13 @@ public:
 	bool bIsLocalTimeDilation;
 
 	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
-	static float GetGlobalTimeDilation() { return UTimeObject::globalTimeDilation; }
+	float GetCurrentTimeDilation() { return (bIsLocalTimeDilation) ? localTimeDilation : UTimeObject::globalTimeDilation; }
+
+	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
+	float GetLocalTime() { return localTime; }
 
 	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
 	static void SetGlobalTimeDilation(float val) { UTimeObject::globalTimeDilation = std::fmin(1.0f, std::fmax(-1.0f, val)); }
-
-	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
-	float GetLocalTimeDilation() { return localTimeDilation; }
 
 	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
 	void SetLocalTimeDilation(float val) { localTimeDilation = std::fmin(1.0f, std::fmax(-1.0f, val)); }
