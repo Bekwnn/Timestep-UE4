@@ -34,6 +34,8 @@ public:
 	UPrimitiveComponent* physicsBodyComponent;
 
 protected:
+	void ClearForcesAndImpulses();
+
 	//used when timescale drops to <= 0.f
 	void FreezePhysicsBody();
 

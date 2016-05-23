@@ -40,8 +40,7 @@ public:
 	UTimeObject();
 	~UTimeObject();
 
-	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
-	float GetTime() { return localTime; }
+	static const float FORWARD_THRESHOLD;
 
 	UFUNCTION(BlueprintCallable, category = "Time Manipulation")
 	void TrackActorTransform();

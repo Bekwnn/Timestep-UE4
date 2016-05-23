@@ -5,6 +5,7 @@
 
 // TimeObject BEGINS
 float UTimeObject::globalTimeDilation = 1.0f;
+const float UTimeObject::FORWARD_THRESHOLD = 0.0005f;
 
 UTimeObject::UTimeObject()
 {
